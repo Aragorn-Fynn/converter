@@ -32,7 +32,7 @@ public class CellHandler implements IExcelHandler {
             CellFormatResult result = cf.apply(cell);
             String content = result.text;
             if (content.equals("")) {
-                content = "&nbsp;";
+                content = " ";
             }
             Text text = holder.createText(content);
             td.appendChild(text);

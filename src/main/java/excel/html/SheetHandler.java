@@ -16,13 +16,15 @@ public class SheetHandler implements IExcelHandler {
     private int firstColumn;
     private int endColumn;
     private boolean outputColumnHeader;
+    private boolean outputRowNum;
 
     private DocumentHolder holder;
 
-    public SheetHandler(Sheet sheet, DocumentHolder holder, boolean outputColumnHeader) {
+    public SheetHandler(Sheet sheet, DocumentHolder holder, boolean outputColumnHeader, boolean outputRowNum) {
         this.sheet = sheet;
         this.holder = holder;
         this.outputColumnHeader = outputColumnHeader;
+        this.outputRowNum = outputRowNum;
         getColumnBounds();
     }
 
@@ -43,7 +45,13 @@ public class SheetHandler implements IExcelHandler {
         Element row = holder.createTableRow();
         row.setAttribute("class", "rowHeader");
         header.appendChild(row);
-        //noinspection UnusedDeclaration
+
+        if (outputRowNum) {
+            Element th = holder.createTableHeaderCell();
+            th.setTextContent(" ");
+            th.setAttribute("class", "colHeader");
+            row.appendChild(th);
+        }
         StringBuilder colName = new StringBuilder();
         for (int i = firstColumn; i < endColumn; i++) {
             colName.setLength(0);

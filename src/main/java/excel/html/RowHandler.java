@@ -10,15 +10,26 @@ import org.w3c.dom.Element;
 public class RowHandler implements IExcelHandler {
 
     private Row row;
+    private boolean outputRowNum;
     private DocumentHolder holder;
 
-    public RowHandler(Row row, DocumentHolder holder) {
+    public RowHandler(Row row, DocumentHolder holder, boolean outputRowNum) {
         this.row = row;
         this.holder = holder;
+        this.outputRowNum = outputRowNum;
     }
 
     @Override
     public Element handle() {
-        return holder.createTableRow();
+        Element tr = holder.createTableRow();
+        if (outputRowNum) {
+            Element rowNum = holder.createTableCell();
+            rowNum.setTextContent(row.getRowNum()+1+"");
+            rowNum.setAttribute("class", "rowHeader");
+            tr.appendChild(rowNum);
+        }
+
+        return tr;
+
     }
 }

@@ -96,9 +96,7 @@ public class StyleHandler {
             XSSFCellStyle cs = (XSSFCellStyle) style;
             styleMap.put("background-color", styleColor(cs.getFillForegroundXSSFColor()));
             styleMap.put("text-color", styleColor(cs.getFont().getXSSFColor()));
-        }
-
-        if (style instanceof HSSFCellStyle) {
+        } else if (style instanceof HSSFCellStyle) {
             HSSFCellStyle cs = (HSSFCellStyle) style;
             HSSFPalette colors = ((HSSFWorkbook) workbook).getCustomPalette();
             styleMap.put("background-color", styleColor(colors.getColor(cs.getFillForegroundColor())));
@@ -112,7 +110,7 @@ public class StyleHandler {
 
     private String styleColor(HSSFColor color) {
         short[] rgb = color.getTriplet();
-        if (color == null || color == HSSFColor.HSSFColorPredefined.AUTOMATIC.getColor()) {
+        if (color == null || color.getIndex() == HSSFColor.HSSFColorPredefined.AUTOMATIC.getColor().getIndex()) {
             return "";
         }
         return String.format("#%02x%02x%02x", rgb[0], rgb[1], rgb[2]);

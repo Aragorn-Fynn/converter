@@ -2,6 +2,7 @@ package excel.html;
 
 import com.sun.org.apache.xml.internal.serializer.OutputPropertiesFactory;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -13,6 +14,9 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Iterator;
 
 /**
@@ -55,6 +59,12 @@ public class ExcelToHtmlConverter {
      * the last column number of cell that has value
      */
     private int endColumn;
+
+    /**
+     * merged ranges
+     */
+    private CellRangeAddress[][] mergedRanges;
+
     /**
      * Creates a new converter
      */
@@ -110,9 +120,10 @@ public class ExcelToHtmlConverter {
     }
 
     private Element convertSheet(Sheet sheet) {
-        Element sheetDoc = new SheetHandler(sheet, holder, options.isOutputColumnHeader()).handle();
+        Element sheetDoc = new SheetHandler(sheet, holder, options.isOutputColumnHeader(), options.isOutputRowNum()).handle();
         Element body = holder.createTableBody();
-        getColumnBounds(sheet);
+        initColumnBoundsOfSheet(sheet);
+        mergedRanges = buildMergedRangesMap(sheet);
 
         Iterator<Row> rowIterator = sheet.rowIterator();
         while (rowIterator.hasNext()) {
@@ -126,14 +137,27 @@ public class ExcelToHtmlConverter {
     }
 
     private Element convertRow(Row row) {
-        Element rowDoc = new RowHandler(row, holder).handle();
+        Element rowDoc = new RowHandler(row, holder, options.isOutputRowNum()).handle();
         String name = styleHandler.handle(workbook, row.getRowStyle());
         if (name != null) {
             rowDoc.setAttribute("class", name);
         }
         for (int columnNum=firstColumn; columnNum<endColumn; columnNum++) {
+            CellRangeAddress range = getMergedRange(mergedRanges, row.getRowNum(), columnNum);
+            if (range != null && (range.getFirstColumn() != columnNum || range.getFirstRow() != row.getRowNum())) {
+                continue;
+            }
+
             Cell cell = row.getCell(columnNum);
             Element cellDoc = convertCell(cell);
+            if (range != null) {
+                if (range.getFirstColumn() != range.getLastColumn()) {
+                    cellDoc.setAttribute("colspan", (range.getLastColumn() - range.getFirstColumn() + 1+""));
+                }
+                if (range.getFirstRow() != range.getLastRow()) {
+                    cellDoc.setAttribute("rowspan", (range.getLastRow() - range.getFirstRow() + 1+""));
+                }
+            }
             rowDoc.appendChild(cellDoc);
         }
 
@@ -151,7 +175,7 @@ public class ExcelToHtmlConverter {
         return cellDoc;
     }
 
-    private void getColumnBounds(Sheet sheet) {
+    private void initColumnBoundsOfSheet(Sheet sheet) {
         Iterator<Row> iter = sheet.rowIterator();
         firstColumn = (iter.hasNext() ? Integer.MAX_VALUE : 0);
         endColumn = 0;
@@ -165,12 +189,60 @@ public class ExcelToHtmlConverter {
         }
     }
 
+    private CellRangeAddress[][] buildMergedRangesMap(Sheet sheet) {
+        CellRangeAddress[][] mergedRanges = new CellRangeAddress[1][];
+        for (final CellRangeAddress cellRangeAddress : sheet.getMergedRegions()) {
+            final int requiredHeight = cellRangeAddress.getLastRow() + 1;
+            if (mergedRanges.length < requiredHeight) {
+                mergedRanges = Arrays.copyOf(mergedRanges, requiredHeight, CellRangeAddress[][].class);
+            }
+
+            for (int r = cellRangeAddress.getFirstRow(); r <= cellRangeAddress.getLastRow(); r++) {
+                final int requiredWidth = cellRangeAddress.getLastColumn() + 1;
+
+                CellRangeAddress[] rowMerged = mergedRanges[r];
+                if (rowMerged == null) {
+                    rowMerged = new CellRangeAddress[requiredWidth];
+                    mergedRanges[r] = rowMerged;
+                } else {
+                    final int rowMergedLength = rowMerged.length;
+                    if (rowMergedLength < requiredWidth) {
+                        rowMerged = mergedRanges[r] =
+                                Arrays.copyOf(rowMerged, requiredWidth, CellRangeAddress[].class);
+                    }
+                }
+
+                Arrays.fill(rowMerged, cellRangeAddress.getFirstColumn(),
+                        cellRangeAddress.getLastColumn() + 1, cellRangeAddress);
+            }
+        }
+        return mergedRanges;
+    }
+
+    private CellRangeAddress getMergedRange(
+            CellRangeAddress[][] mergedRanges, int rowNum, int columnNum) {
+        CellRangeAddress[] mergedRangeRowInfo = rowNum < mergedRanges.length ? mergedRanges[rowNum]
+                : null;
+
+        return mergedRangeRowInfo != null
+                && columnNum < mergedRangeRowInfo.length ? mergedRangeRowInfo[columnNum]
+                : null;
+    }
+
     public static void main(String[] args) throws Exception {
-        Options options = new Options(false, true, false);
+        Options options = new Options(false, true, true);
         ExcelToHtmlConverter converter = new ExcelToHtmlConverter(options);
-        String html = converter.convert("D:/1043826_11_3faf0317eac73bc4a89f18a802e369d.xlsx");
-        FileWriter writer = new FileWriter(new File("D:/test.html"));
-        writer.append(html);
-        writer.close();
+        Files.list(Paths.get("D:/"))
+                .filter(item -> item.getFileName().toString().endsWith("xlsx") || item.getFileName().toString().endsWith("xls"))
+                .forEach(item -> {
+                    try {
+                        String html = converter.convert(item.toFile());
+                        FileWriter writer = new FileWriter(new File(String.format("D:/test_%s.html", item.getFileName().toString())));
+                        writer.append(html);
+                        writer.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
     }
 }

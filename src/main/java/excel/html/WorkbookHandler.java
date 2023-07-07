@@ -10,9 +10,9 @@ import org.w3c.dom.Element;
 public class WorkbookHandler implements IExcelHandler {
 
     private Workbook workbook;
-    private HtmlDocumentHolder holder;
+    private DocumentHolder holder;
 
-    public WorkbookHandler(Workbook workbook, HtmlDocumentHolder holder) {
+    public WorkbookHandler(Workbook workbook, DocumentHolder holder) {
         this.workbook = workbook;
         this.holder = holder;
     }

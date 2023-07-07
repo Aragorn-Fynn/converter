@@ -14,9 +14,9 @@ import org.w3c.dom.Text;
 public class CellHandler implements IExcelHandler {
 
     private Cell cell;
-    private HtmlDocumentHolder holder;
+    private DocumentHolder holder;
 
-    public CellHandler(Cell cell, HtmlDocumentHolder holder) {
+    public CellHandler(Cell cell, DocumentHolder holder) {
         this.cell = cell;
         this.holder = holder;
     }

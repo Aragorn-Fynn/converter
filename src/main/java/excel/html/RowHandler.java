@@ -10,13 +10,14 @@ import org.w3c.dom.Element;
 public class RowHandler implements IExcelHandler {
 
     private Row row;
-    private HtmlDocumentHolder holder;
+    private DocumentHolder holder;
 
-    public RowHandler(Row row, HtmlDocumentHolder holder) {
+    public RowHandler(Row row, DocumentHolder holder) {
         this.row = row;
         this.holder = holder;
     }
 
+    @Override
     public Element handle() {
         return holder.createTableRow();
     }
